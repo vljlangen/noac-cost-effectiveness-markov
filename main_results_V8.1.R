@@ -1,4 +1,4 @@
-################## below icer calculations #######################
+################## ICER calculations #######################
 qaly.yes <- mean(sapply(1:sim, function(n) {
   rown.yes <- dim(test.yes.10k[[n]])[1]
   test.yes.10k[[n]][rown.yes, "Cumulative QALM"]

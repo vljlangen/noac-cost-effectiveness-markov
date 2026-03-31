@@ -111,18 +111,6 @@ source(cost_sampler_path)
 
 prob_sensitivity_data_Yes_NOAC <- NULL
 prob_sensitivity_data_No_NOAC <- NULL
-#iteration <- 20
-#sample datapoints from a normal distribution
-#stroke_mean_effect <- (0.5+0.92)/2
-#bleed_mean_effect <- (1.05 + 2.5)/2
-#stroke_sd <- (0.92 - stroke_mean_effect)/1.92
-#bleed_sd <- (2.5 - bleed_mean_effect)/1.92
-
-###log-normal parameters
-stroke_mean <- log(0.68)
-bleed_mean <- log(1.62)
-stroke_sd <- (log(0.92)-stroke_mean)/1.96
-bleed_sd <- (log(2.5)-bleed_mean)/1.96
 
 #set.seed(seed)
 for (k in 1:iteration){
@@ -139,7 +127,7 @@ for (k in 1:iteration){
                                        c("ICH","Subdural","Other major bleed")))
   
   rates <- c(death_rate/12, stroke_rate[1]/12, bleed_rate[1,]/12, afRate/12)
-  rates_noac <- c(death_rate/12, stroke_rate[2]/12, bleed_rate[2,]/12, afRate/12)
+  rates_noac <- c(death_rate/12 * exp(rnorm(1, mean = death_mean, sd = death_sd)) , stroke_rate[2]/12, bleed_rate[2,]/12, afRate/12) # random noac effect to death applied
   healthStates_rates_variation <- array(c(rates[1], 1- sum(rates), rates[2:6], #monthly rates without OAC
                                 rates_noac[1], 1- sum(rates_noac), rates_noac[2:6]), #monthly rates with OAC
                               dim = c(7,2),
@@ -155,7 +143,7 @@ for (k in 1:iteration){
     months = 120, 
     size = sim, 
     base_qaly = base_qaly, 
-    initial_state = 2, #initial state is susceptible
+    initial_state = 2, #inital state is susceptible
     costs.df = costs,
     discount = discount.factor,
     monthly.cost.of.treatment = monthly.noac.cost)
@@ -174,7 +162,7 @@ for (k in 1:iteration){
     initial_state = 2,
     costs.df = costs,
     discount = discount.factor,
-    monthly.cost.of.treatment = monthly.noac.cost) #initial state is susceptible
+    monthly.cost.of.treatment = monthly.noac.cost) #inital state is susceptible
   temp_no_NOAC_qaly <- NULL
   temp_no_NOAC_cost <- NULL
 
@@ -195,7 +183,7 @@ colnames(prob_sensitivity_data_No_NOAC) <- c("Stroke", "Bleed", "qaly", "cost")
 
 test <- data.frame(matrix(unlist(prob_sensitivity_data_Yes_NOAC), ncol=4))
 colnames(test) <- c("Stroke", "Bleed", "Incremental QALY", "Incremental Cost")
-test[,3] <- (unlist(prob_sensitivity_data_Yes_NOAC[,3]) - unlist(prob_sensitivity_data_No_NOAC[,3]))/12
+test[,3] <- (unlist(prob_sensitivity_data_Yes_NOAC[,3]) - unlist(prob_sensitivity_data_No_NOAC[,3])) #/12
 test[,4] <- (unlist(prob_sensitivity_data_Yes_NOAC[,4]) - unlist(prob_sensitivity_data_No_NOAC[,4]))
 
 print(sprintf("The NOAC was beneficial in the %.2f%% of the cases", 100*(sum(test[,3]>0) / length(test[,3]))))

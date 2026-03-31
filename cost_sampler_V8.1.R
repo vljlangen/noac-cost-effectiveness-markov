@@ -1,4 +1,5 @@
-cost_sampler <- function(end.NOAC.after.bleeding = FALSE, discount = TRUE, prog.bar = TRUE, rate = NULL, af_rate = NULL, policy = NULL, severity = NULL, qaly = NULL, months = 120, size = 10000, base_qaly = NULL, initial_state = NULL, seed = NULL, costs.df = NULL, monthly.cost.of.treatment = 70) {
+cost_sampler <- function(end.NOAC.after.bleeding = FALSE, d.value = 0.03, discount = TRUE, prog.bar = TRUE, rate = NULL, af_rate = NULL, policy = NULL, severity = NULL, qaly = NULL, months = 120, size = 10000, base_qaly = NULL, initial_state = NULL, seed = NULL, costs.df = NULL, monthly.cost.of.treatment = 70) {
+  #isRisk: stroke risk percents
   #policy: the policy to medicate patients
   #severity: proportions of different severities of the outcome
   #qaly: quality adjusted life years for different observed outcomes
@@ -34,8 +35,8 @@ states <- 1:(dim(rate)[1]) # get health states
   ),
   dim = c(5,6,2),
   )
-  #---------------simulation loop starts--------------------
-  #loop for subclinical atrial fibrillation
+  #--------------- Simulation loop starts --------------------
+  # Loop for subclinical atrial fibrillation
   #set seed for reproducibility
   cores <- detectCores()
   cl <- makeCluster(cores[1] -1)
@@ -68,7 +69,7 @@ states <- 1:(dim(rate)[1]) # get health states
 
       action <- sample(actions, 1, prob = policy[,observed_state])
       observed_state <- sample(states, 1, prob = probLine[, action, n]) # the next observed state
-      #Clinical atrial fibrillation
+      # Clinical atrial fibrillation
       if (observed_state == 7) {
         af_diagnosis <- TRUE
         lifeLine[n] <- 1*lifeLine[n]
@@ -112,12 +113,12 @@ states <- 1:(dim(rate)[1]) # get health states
                           ))
         }
       }
-      #build the sample path
+      # Build the sample path
       observation <- rbind(observation, c(observed_state, morbidity, lifeLine[n]*base_qaly[n] * 0.97^power[n], costLine[n] * 0.97^power[n]))
       #death by stroke or bleed or accident breaks the loop
       if (lifeLine[n] == 0 || af_diagnosis) {break}
     }
-    #loop for clinical atrial fibrillation if diagnosed
+    # Loop for clinical atrial fibrillation if diagnosed
     if (af_diagnosis & n!=months){
       #af_states <- 1:length(af_rate)
       action <- 2 #choose to medicate always
@@ -132,8 +133,8 @@ states <- 1:(dim(rate)[1]) # get health states
         #geometrically increase death rate for a year after the disability
         temprate <- 1-sum(c( af_probLine[1,t-n]*death_rates_coefficients_after_disability[observed_state], rate[3:7,] ))
         af_probLine[c(1,2),(t-n):min((t+12-n), months-n)] <- c(Death = af_probLine[1,t-n]*death_rates_coefficients_after_disability[observed_state], Susceptible = temprate) #increased base rate to die for a year after event
-        #build the sample path
-        observation <- rbind(observation, c(observed_state, morbidity, lifeLine[t]*base_qaly[t] * 0.97^power[t], costLine[t] * 0.97^power[t]))
+        # Build the sample path
+        observation <- rbind(observation, c(observed_state, morbidity, lifeLine[t]*base_qaly[t] * (1-d.value)^power[t], costLine[t] * (1-d.value)^power[t]))
         #death by stroke or bleed or accident breaks the loop
         if (lifeLine[t] == 0) {break}
       }
